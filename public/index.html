@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Top songs from 2020 to 2024 by countries</title>
+
+    <script src="https://unpkg.com/globe.gl"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  </head>
+
+  <body>
+    <header>
+      <nav class="navbar">
+        <a class="navbar-element" href="index.html">Home Page</a
+        ><a class="navbar-element" href="writeup.html">Write up Page</a>
+      </nav>
+      <h2><a href=".">Spotify_Visualization</a></h2>
+      <p>
+        <strong>By:</strong> Chon Hin Chou, Raahil Jain, Juliane Mercoli,
+        Lunjia Dai
+      </p>
+    </header>
+    <div id="drop-menu">
+      <label for="monthDropdown">Year: </label>
+      <select onchange="filter()" class="drop-element" id="yearDropdown">
+        <!-- <option value="" disabled selected>Select a Year</option> -->
+        <option value="2022" selected>2022</option>
+        <option value="2023">2023</option>
+        <option value="2024">2024</option>
+      </select>
+
+      <label for="monthDropdown">Month: </label>
+      <select onchange="filter()" class="drop-element" id="monthDropdown">
+        <!-- <option value="" disabled selected>Select Month</option> -->
+        <option value="01" selected>January</option>
+        <option value="02">February</option>
+        <option value="03">March</option>
+        <option value="04">April</option>
+        <option value="05">May</option>
+        <option value="06">June</option>
+        <option value="07">July</option>
+        <option value="08">August</option>
+        <option value="09">September</option>
+        <option value="10">October</option>
+        <option value="11">November</option>
+        <option value="12">December</option>
+      </select>
+
+      <!-- <button class="drop-element" id="filter-button" onclick="filter()">
+        Filter
+      </button>-->
+    </div>
+
+    <div id="globeViz"></div>
+
+    <div id="popup" class="popup">
+      <div class="popup-content">
+        <span class="close-popup">&times;</span>
+        <h3 id="popup-title">Top Songs</h3>
+        <ul id="popup-list"></ul>
+        <svg id="popup-chart"></svg>
+      </div>
+    </div>
+
+    <div id="legend-container"></div>
+
+    <script>
+      const world = new Globe(document.getElementById("globeViz"))
+        .globeImageUrl(
+          "https://unpkg.com/three-globe/example/img/earth-night.jpg"
+        )
+        .width(window.innerWidth * 0.8)
+        .height(window.innerHeight * 0.8);
+      window.onresize = () => {
+        world.width(window.innerWidth * 0.8);
+        world.height(window.innerHeight * 0.8);
+      };
+      const markerSvg = `<svg viewBox="-4 0 36 36">
+        <path fill="currentColor" d="M14,0 C21.732,0 28,5.641 28,12.6 C28,23.963 14,36 14,36 C14,36 0,24.064 0,12.6 C0,5.641 6.268,0 14,0 Z"></path>
+        <circle fill="black" cx="14" cy="14" r="7"></circle>
+      </svg>`;
+
+      let year = null;
+      let month = null;
+
+      const predefinedColors = [
+        "#DC143C",
+        "#008080",
+        "#FFD700",
+        "#4169E1",
+        "#FF7F50",
+        "#228B22",
+        "#FF1493",
+        "#708090",
+        "#E6E6FA",
+        "#FF4500",
+        "#9400D3",
+        "#40E0D0",
+        "#A0522D",
+        "#191970",
+        "#6B8E23",
+        "#4682B4",
+        "#FF6347",
+        "#DDA0DD",
+        "#D2691E",
+      ];
+
+      const songColors = {};
+      let colorIndex = 0;
+
+      let assignColorToSong = (songName) => {
+        if (!songColors[songName]) {
+          songColors[songName] = predefinedColors[colorIndex];
+          colorIndex += 1;
+        }
+        return songColors[songName];
+      };
+
+      function filter() {
+        year = parseInt(document.getElementById("yearDropdown").value);
+        month = parseInt(document.getElementById("monthDropdown").value);
+
+        if (!year || !month) {
+          alert("Please select both a year and a month.");
+          return;
+        }
+
+        console.log("Filtering for:", year, month);
+
+        Object.keys(songColors).forEach((key) => delete songColors[key]);
+        colorIndex = 0;
+
+        fetch("data/centroids.csv")
+          .then((response) => response.text())
+          .then((csvText) => renderGlobe(parseCSV(csvText))) // **Re-render the globe**
+          .catch((error) => console.error("Error loading CSV:", error));
+      }
+
+      let dropDownGenerator = (content) => {
+        return `<div class="tooltip-container">${markerSvg}<span class="tooltip-text">${content}</span></div>`;
+      };
+
+      let parseCSV = (csvText) => {
+        const lines = csvText.trim().split("\n");
+        const headers = lines[0].split(",");
+
+        return lines.slice(1).map((line) => {
+          const values = line.split(",");
+          return headers.reduce((obj, header, index) => {
+            obj[header.trim()] = values[index]?.trim() || "";
+            return obj;
+          }, {});
+        });
+      };
+
+      // For the incrusted chart inside the popup
+      function renderBarChart(data) {
+        d3.select("#popup-chart").selectAll("*").remove();
+
+        const width = 250;
+        const height = 200;
+        const margin = { top: 10, right: 0, bottom: 100, left: 0 };
+
+        const svg = d3
+          .select("#popup-chart")
+          .attr("width", width)
+          .attr("height", height)
+          .append("g")
+          .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const tooltip = d3
+          .select("body")
+          .append("div")
+          .attr("id", "popup-chart-tooltip")
+          .style("position", "absolute")
+          .style("background", "rgba(0, 0, 0, 0.75)")
+          .style("color", "white")
+          .style("padding", "5px")
+          .style("border-radius", "5px")
+          .style("font-size", "12px")
+          .style("display", "none")
+          .style("pointer-events", "none");
+
+        const xScale = d3
+          .scaleBand()
+          .domain(data.map((d) => d.name))
+          .range([0, width - margin.left - margin.right])
+          .padding(0.5);
+
+        const yScale = d3
+          .scaleLinear()
+          .domain([0, d3.max(data, (d) => d.globalStreams)])
+          .nice()
+          .range([height - margin.top - margin.bottom, 0]);
+
+        svg
+          .append("text")
+          .attr("x", (width - margin.left - margin.right) / 2)
+          .attr("y", 0)
+          .attr("text-anchor", "middle")
+          .attr("font-size", "10px")
+          .attr("fill", "black")
+          .text("Percentage of Global Streams for Each Top Song");
+        svg
+          .append("text")
+          .attr("x", (width - margin.left - margin.right) / 2)
+          .attr("y", 12)
+          .attr("text-anchor", "middle")
+          .attr("font-size", "8px")
+          .attr("fill", "black")
+          .text("No data means the song did not");
+        svg
+          .append("text")
+          .attr("x", (width - margin.left - margin.right) / 2)
+          .attr("y", 22)
+          .attr("text-anchor", "middle")
+          .attr("font-size", "8px")
+          .attr("fill", "black")
+          .text("make it to the global charts");
+        svg
+          .selectAll(".global-bar")
+          .data(data)
+          .enter()
+          .append("rect")
+          .attr("class", "global-bar")
+          .attr("x", (d) => xScale(d.name))
+          .attr("y", (d) =>
+            isNaN(d.countryStreams / d.globalStreams) ||
+            !isFinite(d.countryStreams / d.globalStreams)
+              ? yScale(d.countryStreams) + 25
+              : yScale(d.globalStreams) + 25
+          )
+          .attr("width", xScale.bandwidth())
+          .attr("height", (d) =>
+            isNaN(d.countryStreams / d.globalStreams) ||
+            !isFinite(d.countryStreams / d.globalStreams)
+              ? height - margin.top - margin.bottom - yScale(d.countryStreams)
+              : height - margin.top - margin.bottom - yScale(d.globalStreams)
+          )
+          .attr("fill", "#d3d3d3")
+          .on("mouseover", function (event, d) {
+            d3.select(this).attr("fill", "#d3d3f5");
+            tooltip
+              .style("display", "block")
+              .html(
+                `<strong>${
+                  d.name
+                }</strong><br>Global Streams: ${d.globalStreams.toLocaleString()}`
+              )
+              .style("left", event.pageX + 10 + "px")
+              .style("top", event.pageY - 30 + "px");
+          })
+          .on("mousemove", function (event) {
+            tooltip
+              .style("left", event.pageX + 10 + "px")
+              .style("top", event.pageY - 30 + "px");
+          })
+          .on("mouseout", function () {
+            d3.select(this).attr("fill", "#d3d3d3");
+            tooltip.style("display", "none");
+          });
+
+        svg
+          .selectAll(".country-bar")
+          .data(data)
+          .enter()
+          .append("rect")
+          .attr("class", "global-bar")
+          .attr("x", (d) => xScale(d.name))
+          .attr("y", (d) => yScale(d.countryStreams) + 25)
+          .attr("width", xScale.bandwidth())
+          .attr(
+            "height",
+            (d) =>
+              (!d.globalStreams ||
+              isNaN(d.globalStreams) ||
+              d.globalStreams === 0
+                ? height -
+                  margin.top -
+                  margin.bottom -
+                  yScale(d.countryStreams) +
+                  25
+                : height -
+                  margin.top -
+                  margin.bottom -
+                  yScale(d.globalStreams)) *
+              (d.countryStreams / d.globalStreams)
+          )
+          .attr("fill", "#1f77b4");
+
+        svg
+          .selectAll(".label")
+          .data(data)
+          .enter()
+          .append("text")
+          .attr("x", (d) => xScale(d.name) + xScale.bandwidth() / 2)
+          .attr("y", (d) => yScale(d.countryStreams) - 5)
+          .attr("text-anchor", "middle")
+          .attr("alignment-baseline", "middle")
+          .text((d) => {
+            let percent = (d.countryStreams / d.globalStreams) * 100;
+            return isNaN(percent) || !isFinite(percent)
+              ? "No data"
+              : `${percent.toFixed(1)}%`;
+          })
+          .attr("font-size", "10px")
+          .attr("fill", "black");
+
+        svg
+          .selectAll(".song-label")
+          .data(data)
+          .enter()
+          .append("text")
+          .attr("x", (d) => xScale(d.name) + xScale.bandwidth() / 2)
+          .attr("y", (d) => height - margin.bottom + 25)
+          .attr("text-anchor", "start")
+          .attr("class", "song-label")
+          .text((d) => d.name);
+      }
+
+      async function showTopSongs(cc, event) {
+        const topX = 5;
+        if (!year || !month) {
+          document.getElementById(
+            "popup-title"
+          ).innerText = `No information available`;
+          document.getElementById(
+            "popup-list"
+          ).innerHTML = `<li>Please select a month and year.</li>`;
+          return;
+        }
+
+        try {
+          const response = await fetch(`data/${cc}.csv`);
+          if (!response.ok) return;
+
+          const csvText = await response.text();
+          const songs = parseCSV(csvText);
+          const songsToShow = songs
+            .filter(
+              (d) => parseInt(d.year) === year && parseInt(d.month) === month
+            )
+            .slice(0, topX);
+
+          document.getElementById(
+            "popup-title"
+          ).innerText = `Top Songs in ${cc.toUpperCase()}`;
+          document.getElementById("popup-list").innerHTML = songsToShow.length
+            ? songsToShow
+                .map(
+                  (song) =>
+                    `<li>${song.track_name} - ${song.artist_names} (${song.streams} streams)</li>`
+                )
+                .join("")
+            : "<li>No data available</li>";
+
+          const globalResponse = await fetch(`data/global.csv`);
+          if (!globalResponse.ok) {
+            console.warn("No global data available.");
+            return;
+          }
+
+          const globalCsvText = await globalResponse.text();
+          const globalSongs = parseCSV(globalCsvText);
+
+          const globalStreams = {};
+          globalSongs.forEach((song) => {
+            if (
+              parseInt(song.year) === year &&
+              parseInt(song.month) === month
+            ) {
+              globalStreams[song.track_name] = parseInt(song.streams);
+            }
+          });
+
+          const chartData = songsToShow.map((song) => ({
+            name: song.track_name,
+            countryStreams: parseInt(song.streams),
+            globalStreams: globalStreams[song.track_name] || 0,
+          }));
+
+          renderBarChart(chartData);
+
+          const popup = document.getElementById("popup");
+          popup.style.display = "block";
+          popup.style.left = `${event.pageX + 15}px`;
+          popup.style.top = `${event.pageY - 40}px`;
+        } catch (error) {
+          console.error(error);
+        }
+      }
+      const collectedCCs = [
+        "us",
+        "za",
+        "ar",
+        "au",
+        "br",
+        "ca",
+        "eg",
+        "fi",
+        "gb",
+        "hk",
+        "in",
+        "it",
+        "jp",
+        "kr",
+        "ng",
+      ];
+      let renderGlobe = async (data) => {
+        const gData = [];
+        const songMap = {};
+
+        for (const entry of data) {
+          let cc = entry.ISO.toLowerCase();
+
+          if (!collectedCCs.includes(cc)) {
+            continue;
+          }
+          try {
+            let response = await fetch(`data/${cc}.csv`);
+            if (!response.ok) continue;
+
+            const csvText = await response.text();
+            const songs = parseCSV(csvText);
+
+            let topSong = "Unknown";
+            let color = "#cccccc";
+
+            if (year && month) {
+              const filteredSongs = songs.filter(
+                (d) => parseInt(d.year) === year && parseInt(d.month) === month
+              );
+              if (filteredSongs.length > 0) {
+                topSong = filteredSongs[0].track_name;
+                color = assignColorToSong(topSong);
+              } else {
+                continue;
+              }
+            }
+
+            gData.push({
+              lat: parseFloat(entry.latitude) || 0,
+              lng: parseFloat(entry.longitude) || 0,
+              size: 20.4,
+              color: color,
+              country: cc,
+              topSong: topSong,
+            });
+
+            songMap[cc] = topSong;
+          } catch (error) {
+            console.error(error);
+          }
+        }
+
+        if (gData.length === 0) {
+          console.warn("No valid data found.");
+          return;
+        }
+
+        const legendContainer = document.getElementById("legend-container");
+        if (year && month) {
+          legendContainer.innerHTML = Object.keys(songColors)
+            .map(
+              (song) => `
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: ${songColors[song]}"></span> ${song}
+                </div>
+            `
+            )
+            .join("");
+          legendContainer.style.display = "flex";
+        } else {
+          legendContainer.innerHTML = "";
+          legendContainer.style.display = "none";
+        }
+
+        world.htmlElementsData(gData).htmlElement((d) => {
+          const el = document.createElement("div");
+          el.innerHTML = dropDownGenerator(d.country.toUpperCase());
+          el.style.color = d.color;
+          el.style.width = `${d.size}px`;
+          el.style.position = "absolute";
+          el.style.transform = "translate(-50%, -50%)";
+          el.style["pointer-events"] = "auto";
+          el.style.cursor = "pointer";
+
+          el.onclick = (event) => showTopSongs(d.country, event);
+          return el;
+        });
+      };
+
+      fetch("data/centroids.csv")
+        .then((response) => response.text())
+        .then((csvText) => renderGlobe(parseCSV(csvText)))
+        .catch((error) => console.error("Error loading CSV:", error));
+
+      document.addEventListener("click", function (event) {
+        const popup = document.getElementById("popup");
+        if (!popup.contains(event.target) && event.target.tagName !== "SVG") {
+          popup.style.display = "none";
+        }
+      });
+
+      document.querySelector(".close-popup").onclick = () => {
+        document.getElementById("popup").style.display = "none";
+      };
+      filter();
+    </script>
+    <footer>
+      <p>
+        <a
+          href="https://gitlab.cs.washington.edu/cse442/25wi/a3/spotify_visualization"
+          >Repository</a
+        >
+        <br />
+        <a href="https://courses.cs.washington.edu/courses/cse442/25wi/"
+          >CSE 442 Data Visualization</a
+        >
+        <br />
+        <a href="https://www.washington.edu">University of Washington</a>
+      </p>
+    </footer>
+    <script src="main.js"></script>
+    <div id="popup-chart-tooltip"></div>
+  </body>
+</html>

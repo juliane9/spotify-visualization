@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Top songs from 2020 to 2024 by countries</title>
+  </head>
+
+  <!------------------------------------------------------------>
+  <!-- You are free to modify this template however you want! -->
+  <!------------------------------------------------------------>
+
+  <body>
+    <header>
+      <nav class="navbar">
+        <a class="navbar-element" href="index.html">Home Page</a
+        ><a class="navbar-element" href="writeup.html">Write up Page</a>
+      </nav>
+    </header>
+    <div id="writeup-container">
+      <p id="writeup-element">
+        Our visualization aims to answer the question: How do top Spotify songs vary across different countries and time periods? 
+        With the interactive features implemented in this project, users can easily investigate which songs dominate Spotify 
+        charts in different locations over time. To provide an interactive way to explore global and regional music trends, we utilized 
+        an interactive 3D globe from the Globe Data Visualization library globe.gl where users can rotate, zoom, and select country markers
+         to explore local music trends. We initially considered a traditional 2D map but found that it introduced overlapping markers in 
+         densely populated regions, making interactions cumbersome. A timeline-based visualization was another option, but it lacked the 
+         spatial representation necessary for comparing music trends between regions. All things considered, the 3D globe is the best choice, 
+         as it allows for intuitive exploration of trends and ensures that countries have enough space for interaction while maintaining 
+         a compelling design. A dropdown menu was chosen for selecting years and months due to its simplicity, intuitiveness, and compact design. 
+         This approach allows users to make selections quickly without taking up excessive screen space or extra effort. An alternative option was a slider, 
+         but it was not chosen because it made precise selection of months and years more difficult compared to the dropdown menu. Dropdown menu also allows 
+         users to make comparisons for the same month across different years easier than with a slider (can be useful to identify a theme across seasons, 
+         like for Christmas).
+        <br />
+        <br />
+        To provide users with an easy, intuitive exploration experience, we incorporated several interactive elements. Countries that share 
+        the same most-streamed song have the same color pin to make it easy to identify global hits at a glance. In early prototypes, we experimented 
+        with gradient shading to indicate varying popularity, but this led to visual ambiguity when multiple songs had similar distributions. Instead, 
+        distinct colors were chosen for clarity. Clicking a marker reveals a pop-up containing the top five songs for that country, along with streaming 
+        statistics. We initially considered using hover interactions but found they interfered with the globe’s rotation and made it difficult to compare 
+        multiple countries at once. Inside the pop-up, a bar chart compares local versus global stream counts. Our initial design used stacked bar charts, 
+        but proportions were harder to interpret, so we opted for separate bars with a stronger contrast between local (blue) and global (gray) streams. 
+        Another important consideration was whether to normalize the Y-axis across all countries. While this would allow for direct comparisons, it reduced 
+        readability for countries with lower streaming numbers. We ultimately chose individual scaling to ensure all data remained legible.
+        <br />
+        <br />
+        As a team we collectively spent  roughly 24 hours on this project with each member contributing about 6 hours. We spent most of our time on ensuring that 
+        the design was intuitive and made for an enjoyable experience to interact with. One example of this is when we noticed it was difficult to scroll on our page, 
+        the globe's canvas would take priority over the scroll wheel event and trigger a zoom, we added space to either side of the globe that would allow for normal scrolling. 
+        We also scaled the globe down so that the majority of the rest of the page could fit on without any zoom at all. Downloading the data also took a considerable amount 
+        of time as spotify's site forbade scraping so we had to manually download each file. For more in detail of who was responsible for what, 
+        Raahil implemented the interactive globe and placed markers for each country that we added data on. 
+        Juliane processed the data and developed the pop-up feature that appears when a user clicks on a marker. 
+        Chon designed and implemented the navigation bar along with the dropdown menu. Lunjia completed the write-up which documented our design process.
+        <br />
+        <br />
+      </p>
+    </div>
+    <footer style="text-align: center; padding: 20px; background-color: black;">
+      <h3 style="color: white; margin-bottom: 10px;">References</h3>
+      <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+          <a href="https://charts.spotify.com/charts/view/regional-br-weekly/2024-12-12" 
+             style="color: #87CEEB; text-decoration: none;">Spotify Charts</a>
+          <a href="https://globe.gl" 
+             style="color: #87CEEB; text-decoration: none;">Globe GL</a>
+          <a href="https://d3js.org" 
+             style="color: #87CEEB; text-decoration: none;">D3</a>
+          <a href="https://github.com/gavinr/world-countries-centroids" 
+             style="color: #87CEEB; text-decoration: none;">Centroids List</a>
+          <a href="https://gitlab.cs.washington.edu/cse442/25wi/a3/spotify_visualization" 
+             style="color: #87CEEB; text-decoration: none;">Repository</a>
+          <a href="https://courses.cs.washington.edu/courses/cse442/25wi/" 
+             style="color: #87CEEB; text-decoration: none;">CSE 442 Data Visualization</a>
+          <a href="https://www.washington.edu" 
+             style="color: #87CEEB; text-decoration: none;">University of Washington</a>
+      </div>
+  </footer>  
+    <script src="main.js"></script>
+  </body>
+</html>
